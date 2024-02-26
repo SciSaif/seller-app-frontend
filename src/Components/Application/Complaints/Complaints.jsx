@@ -90,7 +90,9 @@ export default function Complaints() {
   }, []);
 
   const getOrders = () => {
-    const url = `/api/client/all-issue?limit=${rowsPerPage}&offset=${page}`;
+    // const url = `/api/client/all-issue?limit=${rowsPerPage}&offset=${page}`;
+    console.log('process.env.REACT_APP_IGM_BASE_URL', process.env.REACT_APP_IGM_BASE_URL)
+    const url = `${process.env.REACT_APP_IGM_BASE_URL}api/client/all-issue?limit=${rowsPerPage}&offset=${page}`
     getCall(url)
       .then((resp) => {
         setComplaints(resp.issues);
@@ -132,8 +134,8 @@ export default function Complaints() {
   return (
     <>
       <div className="container mx-auto my-8">
-        <div className="mb-4 flex flex-row justify-between items-center">
-          <label style={{ color: theme.palette.primary.main }} className="font-semibold text-2xl">Complaints</label>
+        <div className="flex flex-row items-center justify-between mb-4">
+          <label style={{ color: theme.palette.primary.main }} className="text-2xl font-semibold">Complaints</label>
         </div>
         { complaints?.length > 0 ?
          <ComplaintTable

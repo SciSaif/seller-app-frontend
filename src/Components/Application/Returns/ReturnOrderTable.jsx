@@ -31,6 +31,8 @@ const RETURN_ORDER_STATUS = {
   Liquidated: "Liquidated",
   Reject: "Rejected",
   Rejected: "Rejected",
+  Accept: "Accepted",
+  Return_Rejected: "Return Rejected",
 };
 
 const StyledTableCell = styled(TableCell)({
@@ -107,7 +109,9 @@ const ActionMenu = ({ row, handleRefresh }) => {
   return (
     <>
       <Tooltip title="Update status">
-        <IconButton color="primary" disabled={row.state == "Return_Initiated"}>
+        <IconButton color="primary" 
+        // disabled={row.state == "Return_Initiated"}
+        >
           <EditOutlined onClick={handleClick} />
         </IconButton>
       </Tooltip>
@@ -140,6 +144,7 @@ const ActionMenu = ({ row, handleRefresh }) => {
                   setOrderStatus(e.target.value);
                 }}
               >
+                <MenuItem value={RETURN_ORDER_STATUS.Accept}>Accept</MenuItem>
                 <MenuItem value={RETURN_ORDER_STATUS.Liquidated}>
                   Liquidate
                 </MenuItem>

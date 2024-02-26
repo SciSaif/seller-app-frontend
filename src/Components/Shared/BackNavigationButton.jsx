@@ -1,9 +1,10 @@
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MyButton from "./Button";
+import { Link } from "react-router-dom";
 
 const BackNavigationButton = ({ onClick }) => {
     return (
-        <div>
+        <div className="w-fit">
             <MyButton
                 className="!text-black"
                 icon={<ArrowBackIcon />}
@@ -11,7 +12,7 @@ const BackNavigationButton = ({ onClick }) => {
                 onClick={onClick}
             />
         </div>
-    )
-}
+    );
+};
 
-export default BackNavigationButton
+export default BackNavigationButton;

@@ -16,6 +16,11 @@ import {
     Button,
     Menu,
     CircularProgress,
+    Popover,
+    Stack,
+    FormControl,
+    InputLabel,
+    Select,
 } from "@mui/material";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
@@ -33,10 +38,14 @@ import BackNavigationButton from "../../Shared/BackNavigationButton";
 import { Tooltip } from "@material-ui/core";
 import useStyles from "./style";
 import CancelOrderModal from "./cancelOrderModal.jsx";
+import { EditOutlined } from "@mui/icons-material";
 
 const OrderDetails = () => {
     const [order, setOrder] = useState();
     const [user, setUser] = React.useState();
+    const [anchorEl, setAnchorEl] = useState(null);
+    const [orderStatus, setOrderStatus] = useState(null);
+
     const { cancellablePromise } = useCancellablePromise();
     const params = useParams();
     const navigate = useNavigate();
@@ -127,22 +136,21 @@ const OrderDetails = () => {
             });
     };
 
-    const handleCompleteOrderAccept = (order_uuid) => {
+    const handleOrderStatusChange = (order_uuid, status) => {
         setloading({ ...loading, accept_order_loading: true });
         const url = `/api/v1/orders/${order_uuid}/status`;
         postCall(url, {
-            status: "Accepted",
+            status: status ? status : "Accepted",
         })
             .then((resp) => {
-                cogoToast.success("Order accepted successfully!");
+                cogoToast.success("Order status changed successfully!");
+                handleClose();
 
-                setInterval(function () {
-                    // getOrder();
-                    let orderData = JSON.parse(JSON.stringify(order));
-                    orderData.state = resp.state;
-                    setOrder(orderData);
-                    setloading({ ...loading, accept_order_loading: false });
-                }, 3000);
+                let orderData = JSON.parse(JSON.stringify(order));
+                orderData.state = resp.state;
+
+                setOrder(orderData);
+                setloading({ ...loading, accept_order_loading: false });
             })
             .catch((error) => {
                 console.log(error);
@@ -152,60 +160,169 @@ const OrderDetails = () => {
                 }, 3000);
             });
     };
+    const handleClose = () => {
+        setAnchorEl(null);
+    };
 
     const renderOrderStatus = (order_details) => {
         if (
-            order_details?.state == "Created" &&
+            (order_details?.state == "Created" ||
+                order_details?.state === "Packed" ||
+                order_details?.state === "Order-picked-up" ||
+                order_details?.state === "Out-for-delivery" ||
+                order_details?.state === "Agent-assigned") &&
             user?.role?.name !== "Super Admin"
         ) {
             return (
                 <div style={{ display: "flex", direction: "row", gap: "8px" }}>
-                    <Button
-                        className="!capitalize"
-                        variant="contained"
-                        onClick={() =>
-                            handleCompleteOrderAccept(order_details?._id)
-                        }
-                        disabled={
-                            loading.accept_order_loading ||
-                            loading.cancel_order_loading
-                        }
-                    >
-                        {loading.accept_order_loading ? (
-                            <>
-                                Accept Order&nbsp;&nbsp;
-                                <CircularProgress
-                                    size={18}
-                                    sx={{ color: "white" }}
+                    <>
+                        <Tooltip title="Update status">
+                            <IconButton
+                                color="primary"
+                                // disabled={row.state == "Return_Initiated"}
+                            >
+                                <EditOutlined
+                                    onClick={(e) => {
+                                        setAnchorEl(e.currentTarget);
+                                    }}
                                 />
-                            </>
-                        ) : (
-                            <span>Accept Order</span>
-                        )}
-                    </Button>
-                    <Button
-                        variant="contained"
-                        className="!capitalize"
-                        onClick={() =>
-                            handleCompleteOrderCancel(order_details?._id)
-                        }
-                        disabled={
-                            loading.cancel_order_loading ||
-                            loading.accept_order_loading
-                        }
-                    >
-                        {loading.cancel_order_loading ? (
-                            <>
-                                Cancel Order&nbsp;&nbsp;
-                                <CircularProgress
-                                    size={18}
-                                    sx={{ color: "white" }}
-                                />
-                            </>
-                        ) : (
-                            <span>Cancel Order</span>
-                        )}
-                    </Button>
+                            </IconButton>
+                        </Tooltip>
+                        <Popover
+                            id="edit-order-status"
+                            open={Boolean(anchorEl)}
+                            anchorEl={anchorEl}
+                            onClose={handleClose}
+                            anchorOrigin={{
+                                vertical: "bottom",
+                                horizontal: "left",
+                            }}
+                        >
+                            <Box sx={{ width: "400px", p: 2 }}>
+                                <Stack direction="column" spacing={2}>
+                                    <FormControl fullWidth>
+                                        <InputLabel id="demo-simple-select-label">
+                                            Select Status
+                                        </InputLabel>
+                                        <Select
+                                            labelId="demo-simple-select-label"
+                                            id="demo-simple-select"
+                                            value={orderStatus}
+                                            label="Select Status"
+                                            onChange={(e) => {
+                                                setOrderStatus(e.target.value);
+                                            }}
+                                        >
+                                            <MenuItem value={"Packed"}>
+                                                Packed
+                                            </MenuItem>
+                                            <MenuItem value={"Agent-assigned"}>
+                                                Agent assigned
+                                            </MenuItem>
+                                            <MenuItem value={"Order-picked-up"}>
+                                                Order picked up
+                                            </MenuItem>
+                                            <MenuItem
+                                                value={"Out-for-delivery"}
+                                            >
+                                                Out for delivery
+                                            </MenuItem>
+
+                                            <MenuItem value={"Order-delivered"}>
+                                                Order-delivered
+                                            </MenuItem>
+                                        </Select>
+                                    </FormControl>
+
+                                    <Stack
+                                        direction="row"
+                                        spacing={1}
+                                        justifyContent="flex-end"
+                                    >
+                                        <Button
+                                            size="small"
+                                            variant="outlined"
+                                            onClick={handleClose}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            size="small"
+                                            variant="contained"
+                                            onClick={() => {
+                                                // updateReturnState();
+                                                handleOrderStatusChange(
+                                                    order_details?._id,
+                                                    orderStatus
+                                                );
+                                            }}
+                                        >
+                                            Update
+                                        </Button>
+                                    </Stack>
+                                </Stack>
+                            </Box>
+                        </Popover>
+                    </>
+
+                    {order_details?.state == "Created" ? (
+                        <>
+                            <Button
+                                className="!capitalize"
+                                variant="contained"
+                                onClick={() =>
+                                    handleOrderStatusChange(order_details?._id)
+                                }
+                                disabled={
+                                    loading.accept_order_loading ||
+                                    loading.cancel_order_loading
+                                }
+                            >
+                                {loading.accept_order_loading ? (
+                                    <>
+                                        Accept Order&nbsp;&nbsp;
+                                        <CircularProgress
+                                            size={18}
+                                            sx={{ color: "white" }}
+                                        />
+                                    </>
+                                ) : (
+                                    <span>Accept Order</span>
+                                )}
+                            </Button>
+                            <Button
+                                variant="contained"
+                                className="!capitalize"
+                                onClick={() =>
+                                    handleCompleteOrderCancel(
+                                        order_details?._id
+                                    )
+                                }
+                                disabled={
+                                    loading.cancel_order_loading ||
+                                    loading.accept_order_loading
+                                }
+                            >
+                                {loading.cancel_order_loading ? (
+                                    <>
+                                        Cancel Order&nbsp;&nbsp;
+                                        <CircularProgress
+                                            size={18}
+                                            sx={{ color: "white" }}
+                                        />
+                                    </>
+                                ) : (
+                                    <span>Cancel Order</span>
+                                )}
+                            </Button>
+                        </>
+                    ) : (
+                        <span className="p-2 rounded-lg bg-slate-100">
+                            <p className="text-sm font-normal text-amber-400">
+                                {order_details?.state}
+                            </p>
+                        </span>
+                    )}
                 </div>
             );
         } else {

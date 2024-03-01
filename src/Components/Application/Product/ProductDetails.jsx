@@ -376,10 +376,10 @@ const AddGenericProduct = ({
     const availableOptions = [];
     fulfillments.forEach((fulfillment) => {
       if (fulfillment.id === "f1") {
-        availableOptions.push({ key: "Delivery", value: "delivery" });
+        availableOptions.push({ key: "Delivery", value: "Delivery" });
       }
       if (fulfillment.id === "f2") {
-        availableOptions.push({ key: "Self Pickup", value: "selfPickup" });
+        availableOptions.push({ key: "Self Pickup", value: "Self-Pickup" });
       }
       if (fulfillment.id === "f3") {
         availableOptions.push({

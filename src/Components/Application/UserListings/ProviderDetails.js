@@ -821,7 +821,7 @@ const ProviderDetails = ({ isFromUserListing = false }) => {
         if (supportedFulfillments.delivery) {
             let deliveryDetails = {
                 id: "f1",
-                type: "delivery",
+                type: "Delivery",
                 contact: {
                     email: fulfillmentDetails.deliveryDetails.deliveryEmail,
                     phone: fulfillmentDetails.deliveryDetails.deliveryMobile,
@@ -833,7 +833,7 @@ const ProviderDetails = ({ isFromUserListing = false }) => {
         if (supportedFulfillments.selfPickup) {
             let selfPickupDetails = {
                 id: "f2",
-                type: "pickup",
+                type: "Self-Pickup",
                 contact: {
                     email: fulfillmentDetails.selfPickupDetails.selfPickupEmail,
                     phone: fulfillmentDetails.selfPickupDetails

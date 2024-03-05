@@ -85,15 +85,55 @@ const OrderDetails = () => {
 
     const total_order_price = order?.quote?.price?.value || 0;
     const price_breakup = order?.quote?.breakup;
+    const buyer_finder_fee_percent = Number(
+        order?.payment["@ondc/org/buyer_app_finder_fee_amount"]
+    );
+    const buyer_finder_fee = parseFloat(
+        (total_order_price * (buyer_finder_fee_percent / 100)).toFixed(2)
+    );
     let delivery_charges = 0;
+    let delivery_charges_tax = 0;
+    let packing_charges = 0;
     let total_base_cost = 0;
+    let total_tax = 0;
     if (price_breakup) {
         const delivery_charges_object = price_breakup?.filter(
             (b) => b["@ondc/org/title_type"] == "delivery"
         );
-
+        console.log("price_breakup", price_breakup);
         if (delivery_charges_object && delivery_charges_object?.length > 0) {
             delivery_charges = delivery_charges_object[0]?.price?.value;
+        }
+
+        const delivery_charges_tax_object = price_breakup?.filter(
+            (b) =>
+                b["@ondc/org/title_type"] == "tax" &&
+                b.title == "Delivery charges"
+        );
+
+        if (
+            delivery_charges_tax_object &&
+            delivery_charges_tax_object?.length > 0
+        ) {
+            delivery_charges_tax = delivery_charges_tax_object[0]?.price?.value;
+        }
+
+        const packing_charges_object = price_breakup?.filter(
+            (b) => b["@ondc/org/title_type"] == "packing"
+        );
+
+        if (packing_charges_object && packing_charges_object?.length > 0) {
+            packing_charges = packing_charges_object[0]?.price?.value;
+        }
+
+        const tax_breakup = price_breakup?.filter(
+            (b) => b["@ondc/org/title_type"] == "tax"
+        );
+
+        if (tax_breakup && tax_breakup?.length > 0) {
+            tax_breakup?.forEach((t) => {
+                total_tax += parseFloat(t?.price?.value);
+            });
         }
 
         const order_items = price_breakup?.filter(
@@ -400,7 +440,9 @@ const OrderDetails = () => {
                     </div>
                     <div className="flex justify-between mt-3">
                         <p className="text-base font-normal">Total Taxes</p>
-                        <p className="text-base font-normal">-</p>
+                        <p className="text-base font-normal">
+                            {parseFloat(total_tax).toFixed(2)}
+                        </p>
                     </div>
                     <div className="flex justify-between mt-3">
                         <p className="text-base font-normal">
@@ -410,12 +452,46 @@ const OrderDetails = () => {
                             {parseFloat(delivery_charges).toFixed(2)}
                         </p>
                     </div>
-                    <div className="flex justify-between mt-3">
-                        <p className="text-base font-normal">Total Price</p>
+                    {/* <div className="flex justify-between mt-3">
                         <p className="text-base font-normal">
+                            Total Delivery Fee Tax
+                        </p>
+                        <p className="text-base font-normal">
+                            {parseFloat(delivery_charges_tax).toFixed(2)}
+                        </p>
+                    </div> */}
+                    <div className="flex justify-between mt-3">
+                        <p className="text-base font-normal">
+                            Total Packing Charge
+                        </p>
+                        <p className="text-base font-normal">
+                            {parseFloat(packing_charges).toFixed(2)}
+                        </p>
+                    </div>
+                    <div className="flex justify-between mt-3">
+                        <p className="text-base font-bold">Total Price</p>
+                        <p className="text-base font-bold">
                             {total_order_price
                                 ? parseFloat(total_order_price).toFixed(2)
                                 : "-"}
+                        </p>
+                    </div>
+                    <div className="flex justify-between pt-2 mt-3 border-t ">
+                        <p className="text-sm font-normal">
+                            Buyer Finder Fee %
+                        </p>
+                        <p className="text-sm font-normal">
+                            {buyer_finder_fee_percent
+                                ? buyer_finder_fee_percent + "%"
+                                : "-"}
+                        </p>
+                    </div>
+                    <div className="flex justify-between mt-3 ">
+                        <p className="text-sm font-normal">
+                            Buyer Finder Fee Amount
+                        </p>
+                        <p className="text-sm font-normal">
+                            {buyer_finder_fee ? buyer_finder_fee : "-"}
                         </p>
                     </div>
                 </div>
@@ -577,6 +653,7 @@ const parseQuoteToGetItems = (orderDetails) => {
             isDelivery: break_up_item["@ondc/org/title_type"] === "delivery",
             parent_item_id: break_up_item?.item?.parent_item_id,
             price: Number(break_up_item.price?.value)?.toFixed(2),
+            individualPrice: break_up_item.item?.price?.value,
             itemQuantity,
             quantity,
             provided_by,
@@ -601,27 +678,37 @@ const parseQuoteToGetItems = (orderDetails) => {
                 title: item.title,
                 id: item.id,
                 quantity: item.quantity,
-                price: price,
-                totalPrice: item.quantity * item.price,
+                price: price, // this is the price including quantity
+                totalPrice: item.price,
+                individualPrice: item.individualPrice, // this is the price per item
             };
             items[key] = { ...prev_item_data, ...addition_item_data };
         }
-        if (item.title_type === "tax" && !item.isCustomization) {
+
+        // tax on item
+        if (
+            item.title_type === "tax" &&
+            !item.isCustomization &&
+            item.title !== "Delivery charges"
+        ) {
             let key = item.parent_item_id || item.id;
             items[key] = items[key] || {};
             items[key]["tax"] = {
                 title: "Tax",
                 value: item.price,
             };
+            // add to total price
+            items[key].totalPrice =
+                Number(items[key].totalPrice) + Number(item.price);
         }
-        if (item.title_type === "discount" && !item.isCustomization) {
-            let key = item.parent_item_id || item.id;
-            items[key] = items[key] || {};
-            items[key]["discount"] = {
-                title: item.title,
-                value: item.price,
-            };
-        }
+        // if (item.title_type === "discount" && !item.isCustomization) {
+        //     let key = item.parent_item_id || item.id;
+        //     items[key] = items[key] || {};
+        //     items[key]["discount"] = {
+        //         title: item.title,
+        //         value: item.price,
+        //     };
+        // }
 
         //for customizations
         if (item.title_type === "item" && item.isCustomization) {
@@ -645,7 +732,13 @@ const parseQuoteToGetItems = (orderDetails) => {
                 ...existing_data,
                 ...customisation_details,
             };
+
+            // add to total price
+            items[key].totalPrice =
+                Number(items[key].totalPrice) + Number(item.price);
         }
+
+        // tax on customizations
         if (item.title_type === "tax" && item.isCustomization) {
             let key = item.parent_item_id;
             items[key]["customizations"] = items[key]["customizations"] || {};
@@ -655,6 +748,10 @@ const parseQuoteToGetItems = (orderDetails) => {
                 title: item.title,
                 value: item.price,
             };
+
+            // add to total price
+            items[key].totalPrice =
+                Number(items[key].totalPrice) + Number(item.price);
         }
         if (item.title_type === "discount" && item.isCustomization) {
             let key = item.parent_item_id;
@@ -667,25 +764,25 @@ const parseQuoteToGetItems = (orderDetails) => {
             };
         }
         //for delivery
-        if (item.title_type === "delivery") {
-            delivery["delivery"] = {
-                title: item.title,
-                value: item.price,
-            };
-            let key = item.parent_item_id || item.id;
-            items[key] = items[key] || {};
-            items[key] = {
-                ...items[key],
-                title: item.title,
-                id: item.id,
-                quantity: 1,
-                price: {
-                    title: item.title,
-                    value: item.price,
-                },
-                totalPrice: 1 * item.price,
-            };
-        }
+        // if (item.title_type === "delivery") {
+        //     delivery["delivery"] = {
+        //         title: item.title,
+        //         value: item.price,
+        //     };
+        //     let key = item.parent_item_id || item.id;
+        //     items[key] = items[key] || {};
+        //     items[key] = {
+        //         ...items[key],
+        //         title: item.title,
+        //         id: item.id,
+        //         quantity: 1,
+        //         price: {
+        //             title: item.title,
+        //             value: item.price,
+        //         },
+        //         totalPrice: 1 * item.price,
+        //     };
+        // }
         if (item.title_type === "discount_f") {
             delivery["discount"] = {
                 title: item.title,
@@ -698,36 +795,36 @@ const parseQuoteToGetItems = (orderDetails) => {
                 value: item.price,
             };
         }
-        if (item.title_type === "packing") {
-            delivery["packing"] = {
-                title: item.title,
-                value: item.price,
-            };
-            let key = item.parent_item_id || item.id + "packing";
-            items[key] = items[key] || {};
-            items[key] = {
-                ...items[key],
-                title: item.title,
-                id: item.id,
-                quantity: 1,
-                price: {
-                    title: item.title,
-                    value: item.price,
-                },
-                totalPrice: 1 * item.price,
-            };
-        }
-        if (item.title_type === "discount") {
-            if (item.isCustomization) {
-                let id = item.parent_item_id;
-            } else {
-                let id = item.id;
-                items[id]["discount"] = {
-                    title: item.title,
-                    value: item.price,
-                };
-            }
-        }
+        // if (item.title_type === "packing") {
+        //     delivery["packing"] = {
+        //         title: item.title,
+        //         value: item.price,
+        //     };
+        //     let key = item.parent_item_id || item.id + "packing";
+        //     items[key] = items[key] || {};
+        //     items[key] = {
+        //         ...items[key],
+        //         title: item.title,
+        //         id: item.id,
+        //         quantity: 1,
+        //         price: {
+        //             title: item.title,
+        //             value: item.price,
+        //         },
+        //         totalPrice: 1 * item.price,
+        //     };
+        // }
+        // if (item.title_type === "discount") {
+        //     if (item.isCustomization) {
+        //         let id = item.parent_item_id;
+        //     } else {
+        //         let id = item.id;
+        //         items[id]["discount"] = {
+        //             title: item.title,
+        //             value: item.price,
+        //         };
+        //     }
+        // }
         if (item.title_type === "misc") {
             delivery["misc"] = {
                 title: item.title,
@@ -874,7 +971,7 @@ const OrderItemsSummaryCard = (props) => {
                     ) : col.id === "state" ? (
                         <div>{item?.state}</div>
                     ) : col.id === "price" ? (
-                        <div>₹ {item?.price?.value}</div>
+                        <div>₹ {item?.individualPrice}</div>
                     ) : col.id === "action" ? (
                         <div style={{ cursor: "pointer" }}>
                             {isOrderCancellable(order?.state) &&
@@ -1104,6 +1201,7 @@ const OrderItemsSummaryCard = (props) => {
                         <TableBody>
                             {order_items?.map((item) => {
                                 let product = item?.details;
+                                console.log("item", item);
                                 return (
                                     <ExpandableTableRow
                                         sx={{

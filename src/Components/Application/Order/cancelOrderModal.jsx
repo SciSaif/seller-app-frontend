@@ -13,7 +13,6 @@ import { CANCELATION_REASONS } from "./cancelation-reasons";
 import { getCall, postCall } from "../../../Api/axios";
 import cogoToast from "cogo-toast";
 
-
 const AddCustomizationGroup = (props) => {
   const { showModal, handleCloseModal, data, setOrder } = props;
   const [quantity, setQuantity] = useState(0);
@@ -21,7 +20,7 @@ const AddCustomizationGroup = (props) => {
 
   useEffect(() => {
     setQuantity(data?.item?.quantity);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.data]);
 
   const cancelOrder = () => {
